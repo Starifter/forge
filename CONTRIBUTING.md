@@ -1,94 +1,114 @@
 # Contributing to Forge
 
-Thanks for wanting to improve Forge. This guide covers how the plugin is structured, how to test changes, and how to submit them.
-
 ---
 
-## Structure
+## Architecture overview
 
 ```
-forge/
-├── .claude-plugin/plugin.json   # Name, version, hook reference
-├── agents/                      # One .md file per agent
-├── commands/                    # One .md file per slash command
-├── hooks/                       # SessionStart hook
-└── skills/                      # Skill directories (SKILL.md + references/)
+skills/forge/SKILL.md          ← orchestrator — coordinates phases, never writes code
+skills/using-forge/SKILL.md    ← enforcement meta-skill — injected at session start
+skills/code-review/SKILL.md    ← PR review response skill
+agents/*.md                    ← workers — each does one job and writes to .forge/
+commands/*.md                  ← slash command wrappers
+hooks/session-start.sh         ← injects using-forge + settings at session start
+.claude-plugin/plugin.json     ← manifest + userConfig settings schema
+settings.json                  ← default setting values applied on install
 ```
 
-**Agents** are the workers. Each one has a YAML frontmatter block (`name`, `description`, `model`, `effort`, `maxTurns`) and a Markdown body with instructions.
-
-**Skills** are the orchestrators. `skills/forge/SKILL.md` is the main workflow. `skills/using-forge/SKILL.md` is the enforcement meta-skill. `skills/code-review/SKILL.md` handles PR review responses.
-
-**Commands** are thin wrappers that invoke a skill or agent phase. They use `disable-model-invocation: true` so they're user-only.
+The key architectural rule: **agents write to `.forge/[feature-name]/`, they don't return content to the orchestrator.** The orchestrator passes task IDs and file paths, never content.
 
 ---
 
 ## Making changes
 
 ### Changing a phase's behaviour
-Edit the relevant agent `.md` file in `agents/`. The agent's `description` field controls when Claude invokes it automatically — keep it specific and honest.
+Edit the relevant agent in `agents/`. The `description` frontmatter field controls when Claude auto-invokes it — keep it specific. The body contains the agent's full instructions.
 
 ### Changing orchestration logic
-Edit `skills/forge/SKILL.md`. This is the main workflow file. Be careful with the HARD GATE sections — they're what prevents Claude from skipping steps.
+Edit `skills/forge/SKILL.md`. Pay close attention to:
+- **HARD GATE sections** — these are what prevent Claude from skipping phases. Changing them affects enforcement.
+- **`.forge/` file references** — if you add a new output file, update both the producing agent and consuming agents consistently.
+- **Settings section** — if you add a new setting, document it in the table.
 
 ### Changing enforcement rules
-Edit `skills/using-forge/SKILL.md`. This is injected at every session start via the hook.
+Edit `skills/using-forge/SKILL.md`. This is injected at every session start. Changes here affect every session immediately after reinstall.
 
 ### Adding a new agent
-1. Create `agents/your-agent.md` with YAML frontmatter and instructions
-2. Reference it by name in the relevant SKILL.md phase using the Agent tool pattern
-3. Test that the orchestrator invokes it correctly
+1. Create `agents/your-agent.md` with YAML frontmatter (`name`, `description`, `model`, `effort`, `maxTurns`)
+2. Add a write step: the agent should write its output to `.forge/[feature-name]/your-output.md`
+3. Reference it by name in `skills/forge/SKILL.md` using the Agent tool pattern
+4. Update `agents/README.md` with the new agent's role
 
-### Adding a new slash command
-1. Create `commands/your-command.md` with frontmatter including `disable-model-invocation: true`
+### Adding a new setting
+1. Add to `userConfig` in `.claude-plugin/plugin.json` with `type`, `title`, `description`
+2. Add the default to `settings.json` under `pluginConfigs.forge.options`
+3. Add to the settings table in `skills/forge/SKILL.md`
+4. Add conditional logic in the relevant phase/agent
+5. Update `session-start.sh` if the setting needs to be injected as context
+
+### Adding a slash command
+1. Create `commands/your-command.md` with `disable-model-invocation: true` in frontmatter
 2. Write a brief instruction body that redirects to the relevant skill/phase
+3. Update `commands/README.md`
 
 ---
 
 ## Principles to maintain
 
-**Hard gates are non-negotiable.** Every user-facing decision goes through `AskUserQuestion`. Every phase has an explicit gate. Do not add "optional" steps that can be silently skipped.
+**The orchestrator never codes.** `skills/forge/SKILL.md` invokes agents — it never writes implementation itself.
 
-**The orchestrator never codes.** `skills/forge/SKILL.md` invokes agents — it never implements anything directly. Keep this separation clean.
+**Agents write to `.forge/`, they don't return content.** Pass task IDs and file paths. Never paste file content or prior agent outputs into prompts.
 
-**Fresh context per task.** `task-implementer` prompts should include only: the task, the target file, and conventions. Do not pass full conversation history or the entire plan.
+**Hard gates are non-negotiable.** Every user-facing decision goes through `AskUserQuestion`. Every phase has an explicit gate. Do not add phases that can be silently skipped.
 
-**Wave-level batch review.** Reviewers fire per wave, not per task. Don't revert this — it's a meaningful speed improvement with no quality loss.
+**Haiku for mechanical work.** `researcher`, `context-manager`, and `dependency-installer` run on Haiku because their work is mechanical (reading, extracting, compressing). Agents that reason or generate code run on Sonnet.
 
-**Haiku for mechanical work.** `researcher` runs on Haiku because it's doing file reading and pattern extraction, not reasoning. If you add agents for similarly mechanical tasks (e.g. summarising, searching), use Haiku.
+**Wave-level batch review, not per-task.** Don't revert the batching — it's a meaningful speed improvement. The only exception is `strict_wave_review: true` in settings.
+
+**Fresh context per agent invocation.** Each agent should be able to complete its job from a cold start using only what's in `.forge/` and the codebase on disk.
 
 ---
 
 ## Testing
 
-Install the plugin locally:
+Install the plugin locally and test against a real small project:
 
 ```bash
+# Install from local directory
+claude plugin install --plugin-dir ./forge
+
+# Or reinstall from the packaged .skill file
 claude /install forge.skill
 ```
 
-Test the full workflow on a real small feature in a test repo. Check that:
-- `AskUserQuestion` fires at every gate (not plain text questions)
-- Worktree setup runs in background and doesn't block Research
+Test the full workflow with a simple feature. Check:
+- `AskUserQuestion` fires at every gate (no plain-text questions)
+- `.forge/[feature-name]/` is created with the right structure
+- Worktree setup runs in background without blocking Research
 - Wave classification logs correctly (Fully parallel / Mixed / Fully sequential)
 - Batch review fires per wave, not per task
-- The `using-forge` enforcement context appears at session start
+- `context-manager` runs once after all waves, not per wave
+- `using-forge` context appears at session start
+- Settings take effect when configured
 
 ---
 
 ## Submitting changes
 
 1. Fork the repo
-2. Create a branch: `git checkout -b fix/your-change` or `feat/your-change`
-3. Make your changes
+2. Branch: `git checkout -b fix/your-change` or `feat/your-change`
+3. Make changes
 4. Update `CHANGELOG.md` under an `[Unreleased]` section
-5. Open a PR with a clear description of what changed and why
+5. Bump version in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`
+6. Open a PR with a clear description of what changed and why
 
 ---
 
 ## Reporting issues
 
 Open a GitHub issue with:
-- What phase the problem occurred in
+- Which phase the problem occurred in
 - What the agent did vs what you expected
-- The feature request or task you were working on (summarised is fine)
+- The feature request you were working on (summarised)
+- Whether you were in worktree or inline mode
+- Which settings were enabled

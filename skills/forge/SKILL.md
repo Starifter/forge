@@ -22,6 +22,30 @@ A structured, phase-gated development workflow from idea to verified, merged imp
 4. **Research always runs** — never skipped.
 5. **Always ask Sequential or Parallel** before implementing. Never assume.
 6. **Always use the AskUserQuestion tool** for every question asked to the user — workspace choice, confirmations, finish options, everything. Never ask questions as plain text.
+7. **After all waves complete** (at Gate 4B), invoke `context-manager` once to compress all wave outputs into Wave Summaries. Discard all raw agent outputs. Only carry Wave Summary file paths forward into Verify and Complete.
+8. **Before dispatching any subagent**, invoke `context-manager` to validate and trim the prompt if needed. Never dispatch an OVERSIZED prompt.
+
+---
+
+## Settings
+
+Forge behaviour is controlled by `pluginConfigs["forge"].options` in the user's `settings.json`. Read these at the start of every session:
+
+| Setting | Default | Effect |
+|---|---|---|
+| `tdd_mode` | `false` | If `true`: use `tdd-task-implementer` instead of `task-implementer` for all implementation tasks |
+| `auto_research` | `true` | If `true`: skip the worktree/inline question and use `worktree_default` if set |
+| `strict_wave_review` | `false` | If `true`: run `code-reviewer` after every individual task, not batched per wave |
+| `worktree_default` | `""` | If `"worktree"` or `"inline"`: skip the workspace choice question and use this mode |
+| `auto_clean` | `false` | If `true`: automatically delete `.forge/` after the Complete phase ships the feature |
+
+**How to read settings:** At the start of a session, check `pluginConfigs["forge"].options` in the user's settings. If unavailable, use the defaults above.
+
+**TDD mode routing:** Wherever these instructions say "invoke `task-implementer`", substitute `tdd-task-implementer` if `tdd_mode` is `true`. The prompt format is identical — just the agent name changes.
+
+**Workspace default:** If `worktree_default` is set to `"worktree"` or `"inline"`, skip the AskUserQuestion at Phase 2 and proceed directly with that mode. Still check git status for worktree mode.
+
+**Strict wave review:** If `strict_wave_review` is `true`, skip the wave-level batch review pattern and instead invoke `code-reviewer` immediately after each individual `task-implementer` result — in both PATH A and PATH B.
 
 ---
 
@@ -67,20 +91,74 @@ Wait for the `frontend-developer` to return a confirmed output before invoking s
 
 ---
 
+## Phase 0.5: Forge Init
+
+**Goal:** Create a feature-namespaced session directory under `.forge/` before any phase runs.
+
+Derive a folder name from the user's request: lowercase, hyphenated, max 40 chars (e.g. `add-user-auth`, `fix-rate-limiter`, `redesign-dashboard`).
+
+```bash
+FEATURE_NAME="[derived-feature-name]"
+mkdir -p ".forge/${FEATURE_NAME}"
+
+cat > ".forge/${FEATURE_NAME}/session.md" << 'EOF'
+# Forge Session
+
+## Feature
+[feature name from user request]
+
+## Folder
+.forge/[feature-name]/
+
+## Started
+[timestamp]
+
+## Status
+- [ ] UI Check
+- [ ] Spec
+- [ ] Workspace
+- [ ] Research
+- [ ] Plan
+- [ ] Implement
+- [ ] Verify
+- [ ] Complete
+
+## Workspace mode
+[to be set in Phase 2]
+
+## Branch
+[to be set in Phase 2]
+EOF
+```
+
+All subsequent `.forge/` file references in this session use `.forge/[feature-name]/` as the base path:
+- `.forge/[feature-name]/spec.md`
+- `.forge/[feature-name]/research.md`
+- `.forge/[feature-name]/plan.md`
+- `.forge/[feature-name]/ui-spec.md`
+- `.forge/[feature-name]/wave-N-summary.md`
+- `.forge/[feature-name]/complete.md`
+
+This keeps each feature's session files isolated. Multiple features can have active `.forge/` directories simultaneously without conflict.
+
+This directory persists across context resets — if a session is interrupted, Forge can resume by reading `.forge/[feature-name]/`.
+
+---
+
 ## Phase 1: Spec
 
 **Goal:** Understand exactly what the user wants.
 
-Use the **Agent tool** to invoke the `spec-agent` with the user's raw request as the prompt. If a UI Check was run, also pass the confirmed Design Brief as context.
+Use the **Agent tool** to invoke the `spec-agent` with the user's raw request as the prompt.
 
 The spec-agent will:
-- Run a Socratic dialogue in rounds (scope, edge cases, constraints)
-- Write a structured design document
-- Confirm with the user before finishing
+- Run a Socratic dialogue in rounds
+- Write the confirmed design document to `.forge/spec.md`
+- Return: `Spec confirmed — written to .forge/spec.md`
 
 **Do not run Spec inline. Only the `spec-agent` runs the Spec phase.**
 
-Wait for the spec-agent to return a confirmed spec before continuing.
+Wait for spec-agent to return before continuing.
 
 ### ⛔ HARD GATE 1 — END OF SPEC
 
@@ -128,12 +206,16 @@ Worktree setup task:
 1. Create branch name from this spec title: [spec title — kebab-case, max 40 chars]
 2. Run: git worktree add "../worktree-BRANCH_NAME" -b "BRANCH_NAME"
 3. cd into the worktree
-4. Install dependencies (npm install / pip install / bundle install / etc.)
+4. Invoke the `dependency-installer` agent to detect the project type and install dependencies:
+   - Pass the worktree path
+   - Wait for its install report before continuing
+   - If install FAILED: include the full error in your report back — do not continue to baseline tests
 5. Run the baseline test suite to confirm green
 
 Report back:
 - Branch name created
 - Worktree path
+- Dependency install result (from dependency-installer report)
 - Baseline test result (X passing / FAILED)
 
 If baseline tests fail, report the failures clearly.
@@ -190,16 +272,14 @@ This phase always runs. Do not skip it. Do not research inline.
 Use the **Agent tool** to invoke the `researcher` agent with this prompt:
 
 ```
-Design document:
-[paste the full confirmed design document from spec-agent]
-
-Workspace: [worktree — setup running in background, research from current directory | inline — current directory]
-
-Research the codebase and any external topics needed to plan this feature accurately.
-Return a completed Research Summary.
+Read .forge/spec.md for context, then research the codebase and any external
+topics needed to plan this feature accurately.
+Write the Research Summary to .forge/research.md.
 ```
 
-Wait for the researcher to return the summary, then pass it directly to the plan-agent in Phase 4. Do not modify or summarise the researcher's output — pass it as-is.
+The researcher reads `.forge/spec.md` itself — do not paste the spec.
+
+Wait for researcher to return `Research complete — written to .forge/research.md` before continuing.
 
 Then proceed directly to Phase 4 — no additional gate after Research.
 
@@ -212,23 +292,16 @@ Then proceed directly to Phase 4 — no additional gate after Research.
 Use the **Agent tool** to invoke the `plan-agent` with this prompt:
 
 ```
-Confirmed spec:
-[paste the full confirmed spec from spec-agent]
-
-Research summary:
-[paste the full Research Summary from Phase 3]
-
-Workspace mode: [worktree at ../worktree-<branch-name> / inline]
+Read .forge/spec.md and .forge/research.md, produce a waved implementation
+plan, write it to .forge/plan.md, and collect user approval and execution mode.
+Workspace: [worktree at ../worktree-<branch-name> / inline]
 ```
 
-The plan-agent will:
-- Write a waved task plan with exact file paths
-- Ask the user to approve the plan AND choose sequential or parallel
-- Not return until both are confirmed
+The plan-agent reads all context from `.forge/` itself — do not paste spec or research.
 
-**Do not plan inline. Only the `plan-agent` runs the Plan phase.**
+Wait for plan-agent to return `Plan approved — written to .forge/plan.md. Execution mode: [mode]` before continuing.
 
-Wait for the plan-agent to return an approved plan with execution mode before continuing.
+Then update `.forge/session.md` to record the execution mode.
 
 ### ⛔ HARD GATE 3 — END OF PLAN
 
@@ -256,27 +329,16 @@ You are the orchestrator. You dispatch tasks directly — no sequential-executor
 
 #### Step 1 — Run tasks sequentially
 
-For each task in the wave, use the **Agent tool** to invoke `task-implementer`:
+For each task in the wave, use the **Agent tool** to invoke `task-implementer` (or `tdd-task-implementer` if tdd_mode is enabled):
 
 ```
-Task: [copy task line verbatim from plan]
-File: [exact file path]
-Workspace: [worktree path or "inline — edit files in place"]
-
-Current file content:
----
-[full file if under 200 lines, signatures/types only if larger]
----
-
-Coding conventions:
-- [convention 1]
-- [convention 2]
-
-Implement exactly as described. Do not touch other files.
-Report: what changed, deviations, assumptions.
+Task ID: [e.g. Task 1.2]
+Workspace: [worktree path or "inline"]
 ```
 
-Wait for each task-implementer to complete before starting the next. Record each result.
+The task-implementer reads `.forge/plan.md` for the task details and conventions, and reads the target file from disk directly. Do not paste task content or file content — pass only the task ID.
+
+Wait for each task-implementer to complete before starting the next.
 
 If task-implementer returns **Task Blocked**: log it as 🚫 BLOCKED, continue to next task.
 
@@ -309,7 +371,18 @@ Wait for all wave reviewers to complete.
 
 For each NEEDS REVISION result: re-invoke `task-implementer` with original prompt + reviewer feedback, wait for result, re-invoke `code-reviewer`. Repeat up to 3 cycles → mark ⚠️ STUCK after 3 failures.
 
-#### Step 4 — Mark wave complete, start next wave
+#### Step 4 — Mark wave complete, verify (if enabled), start next wave
+
+Update the progress log with the wave status.
+
+**If `verify_per_wave` is `true`:** Run the full test suite before starting the next wave:
+```bash
+[project test command]
+```
+- ✅ All passing → log result, continue to next wave
+- ❌ Failures → stop and report to the user. Ask whether to fix now or continue anyway. Do not auto-proceed on failure.
+
+**If `verify_per_wave` is `false` (default):** Start the next wave immediately.
 
 All tasks must be ✅ or flagged before starting the next wave.
 
@@ -348,22 +421,11 @@ Use the **Agent tool** with `run_in_background: true` for each parallel-safe tas
 
 Prompt for each:
 ```
-Task: [task line verbatim]
-File: [exact file path]
-Workspace: [worktree path or "inline — edit files in place"]
-
-Current file content:
----
-[full file if under 200 lines, signatures/types only if larger]
----
-
-Coding conventions:
-- [convention 1]
-- [convention 2]
-
-Implement exactly as described. Do not touch other files.
-Report: what changed, deviations, assumptions.
+Task ID: [e.g. Task 2.1]
+Workspace: [worktree path or "inline"]
 ```
+
+The task-implementer reads `.forge/plan.md` for task details and conventions, and reads the target file from disk directly. Pass only the task ID.
 
 #### Step 3 — Wait for all parallel task-implementers
 *(Skip if fully sequential)*
@@ -375,19 +437,11 @@ Once ALL parallel task-implementers in this wave have completed, dispatch one `c
 
 Prompt for each:
 ```
-Original task: [task line verbatim]
-Target file: [file path]
-
-Implementer's report:
-[full task-implementer output]
-
-Conventions: [list]
-
-Stage 1 — Spec compliance: output match task? Only correct file touched?
-Stage 2 — Code quality: bugs, violations, dead code?
-
-Return APPROVED or NEEDS REVISION with specifics.
+Task ID: [e.g. Task 2.1]
+Implementer report: [paste only the "What I changed" section from task-implementer output]
 ```
+
+The code-reviewer reads `.forge/plan.md` for the original task and conventions, and reads the changed file from disk directly.
 
 #### Step 5 — Wait for all wave reviewers to complete
 *(Skip if fully sequential)*
@@ -407,21 +461,46 @@ Run conflicted tasks one at a time with task-implementer. Once ALL conflicted ta
 For fully sequential waves: run all tasks in plan order, then batch-review the whole wave together.
 For mixed waves: complete the parallel batch first, then run conflicted tasks, then batch-review the conflicted set.
 
-#### Step 8 — Mark wave complete, start next wave
+#### Step 8 — Mark wave complete, verify (if enabled), start next wave
 
-All tasks must be ✅ or flagged before starting the next wave.
+Update the progress log with the wave status.
+
+**If `verify_per_wave` is `true`:** Run the full test suite before starting the next wave:
+```bash
+[project test command]
+```
+- ✅ All passing → log result, continue to next wave
+- ❌ Failures → stop and report to the user. Ask whether to fix now or continue anyway. Do not auto-proceed on failure.
+
+**If `verify_per_wave` is `false` (default):** Start the next wave immediately.
+
+All tasks must be ✅ or flagged before starting the next wave. Never start the next wave early.
 
 ---
 
 ### Progress log
 
+The progress log tracks wave status during execution. Raw agent outputs are carried until all waves complete, then compressed in one pass at Gate 4B.
+
 ```
 ## Execution Progress — [Sequential / Parallel]
 
-### Wave 1 — [label]
-- ✅ Task 1.1 — [what was done]
-- ⚠️ Task 1.2 — STUCK: [issue]
-- 🚫 Task 1.3 — BLOCKED: [reason]
+### Wave 1 — [label] ✅
+- ✅ Task 1.1 — [one line: what was done]
+- ✅ Task 1.2 — [one line: what was done]
+
+### Wave 2 — [label] ✅
+- ✅ Task 2.1 — [one line: what was done]
+- ⚠️ Task 2.2 — STUCK: [brief issue]
+
+### Wave 3 — [label] ⚠️
+- 🚫 Task 3.1 — BLOCKED: [reason]
+```
+
+After Gate 4B compression: all wave details are replaced with file paths:
+```
+Wave 1 ✅ → .forge/wave-1-summary.md
+Wave 2 ✅ → .forge/wave-2-summary.md
 ```
 
 ---
@@ -446,7 +525,17 @@ Wait for it to complete, then apply the checks above.
 
 ### ⛔ HARD GATE 4B — END OF IMPLEMENT
 
-Use the AskUserQuestion tool:
+All waves are done. Before asking about tests, run a **single compression pass** over all completed waves:
+
+Invoke the **context-manager** agent once:
+```
+All waves complete. Compress all waves.
+Waves: [list all wave numbers, labels, and task IDs with ✅/⚠️/🚫 status]
+```
+
+The context-manager writes `.forge/wave-N-summary.md` for each wave and returns when done. **Drop all raw task-implementer and code-reviewer output** from the orchestrator context — only the wave summary file paths are retained going forward.
+
+Then use the AskUserQuestion tool:
 
 ```
 AskUserQuestion:
@@ -536,7 +625,30 @@ git push -u origin <branch-name>
 Changes left uncommitted in [worktree path / current directory].
 ```
 
-Deliver summary:
+Write the completion record and deliver summary:
+
+```bash
+cat > .forge/complete.md << 'EOF'
+# Complete: [Feature Name]
+
+## What was built
+[1–2 sentences]
+
+## Files changed
+- `path/to/file` — [what changed]
+
+## Tests
+X passed
+
+## Branch
+[branch name or "inline"]
+
+## Wave summaries
+[list of .forge/wave-N-summary.md files]
+EOF
+```
+
+Then deliver to the user:
 ```
 ## ✅ Done
 
@@ -547,7 +659,18 @@ Deliver summary:
 
 **Tests:** X passed
 **Branch:** <branch-name> [if applicable]
+
+Session files saved to .forge/ — resumable if needed.
 ```
+
+**If `auto_clean` is `true` in settings:** After delivering the summary, automatically run:
+```bash
+rm -rf ".forge/[feature-name]/"
+echo ".forge/[feature-name]/ cleaned up."
+```
+And append to the summary: `Session files removed (auto_clean enabled).`
+
+**If `auto_clean` is `false` (default):** Leave `.forge/[feature-name]/` in place. The user can run `/forge:clean` to remove it manually.
 
 ---
 

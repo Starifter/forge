@@ -1,0 +1,14 @@
+{
+  "pluginConfigs": {
+    "forge": {
+      "options": {
+        "tdd_mode": false,
+        "auto_research": true,
+        "strict_wave_review": false,
+        "worktree_default": "",
+        "auto_clean": false,
+        "verify_per_wave": false
+      }
+    }
+  }
+}
