@@ -1,42 +1,22 @@
 {
-  "name": "forge",
-  "displayName": "Forge",
-  "version": "1.0.0",
-  "description": "A structured, agent-driven development workflow for Claude Code. Spec → Research → Plan → Implement → Verify with parallel execution, phase gates, and dedicated agents for every step.",
-  "author": "your-github-username",
-  "license": "MIT",
-  "repository": "https://github.com/your-github-username/forge",
-  "homepage": "https://github.com/your-github-username/forge",
-  "keywords": [
-    "workflow",
-    "development",
-    "planning",
-    "agents",
-    "tdd",
-    "code-review",
-    "parallel",
-    "spec",
-    "research"
-  ],
-  "categories": [
-    "workflow",
-    "productivity",
-    "code-quality"
-  ],
-  "components": {
-    "skills": ["forge", "using-forge", "code-review"],
-    "agents": [
-      "spec-agent",
-      "researcher",
-      "plan-agent",
-      "frontend-developer",
-      "task-implementer",
-      "code-reviewer"
-    ],
-    "commands": ["spec", "plan", "implement", "review", "complete"],
-    "hooks": ["SessionStart"]
+  "name": "starifter-forge",
+  "owner": {
+    "name": "starifter",
+    "email": ""
   },
-  "requirements": {
-    "claudeCode": ">=1.0.0"
-  }
+  "plugins": [
+    {
+      "name": "forge",
+      "source": {
+        "source": "github",
+        "repo": "starifter/forge"
+      },
+      "description": "A structured, agent-driven development workflow for Claude Code. Spec → Research → Plan → Implement → Verify with parallel execution, phase gates, and dedicated agents for every step.",
+      "version": "1.0.0",
+      "author": {
+        "name": "starifter"
+      },
+      "keywords": ["workflow", "development", "planning", "agents", "code-review", "parallel", "spec"]
+    }
+  ]
 }
