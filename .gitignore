@@ -1,0 +1,16 @@
+# Packaged skill file (build artifact)
+*.skill
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp
+*.tmp
+*.log

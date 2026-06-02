@@ -1,0 +1,10 @@
+{
+  "name": "forge",
+  "displayName": "Forge",
+  "version": "1.0.0",
+  "description": "Forge \u2014 a structured, phase-gated development workflow with spec, research, planning, parallel execution, code review, and session enforcement.",
+  "author": {
+    "name": "forge"
+  },
+  "hooks": "./hooks/hooks.json"
+}
