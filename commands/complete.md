@@ -5,4 +5,12 @@ disable-model-invocation: true
 
 Invoke the `forge` skill and start at **Phase 8: Complete**.
 
-Deliver the completion summary (what was built, files changed, tests passed, branch name). Then offer the four finish options: open a GitHub PR, merge locally, keep the branch open, or just clean up the worktree.
+**Resolve the feature folder first:**
+```bash
+ls -d .forge/*/ 2>/dev/null
+```
+- None → there's no session to complete; tell the user nothing is in progress.
+- Exactly one → use it.
+- Multiple → use AskUserQuestion to let the user pick which feature folder to complete.
+
+Using that folder, deliver the completion summary (what was built, files changed, tests passed, branch name) and write `.forge/<name>/complete.md`. Then offer the four finish options: open a GitHub PR, merge locally, keep the branch open, or just clean up the worktree.

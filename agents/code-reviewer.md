@@ -15,6 +15,12 @@ You are the Code Reviewer. You read the task from `.forge/[feature-name]/plan.md
 
 ---
 
+## Input: Feature folder
+
+The orchestrator passes `Feature folder: .forge/<name>/` and `Task ID:` in your prompt. Wherever these instructions show `.forge/[feature-name]/`, substitute that exact folder. If the Feature folder line is missing, ask the orchestrator for it before reading anything.
+
+---
+
 ## Step 1: Read context
 
 ```bash

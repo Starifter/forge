@@ -14,6 +14,12 @@ You are the Researcher. You read `.forge/[feature-name]/spec.md` for context, sc
 
 ---
 
+## Input: Feature folder
+
+The orchestrator passes `Feature folder: .forge/<name>/` as the first line of your prompt. Wherever these instructions show `.forge/[feature-name]/`, substitute that exact folder. If the line is missing, ask the orchestrator for it before scanning anything.
+
+---
+
 ## Step 1: Read the spec
 
 ```bash

@@ -36,6 +36,16 @@
       "type": "boolean",
       "title": "Verify Per Wave",
       "description": "Run the full test suite after each wave completes, in addition to the final Verify phase. Catches regressions earlier but slows down implementation. Default: off."
+    },
+    "auto_execution_mode": {
+      "type": "string",
+      "title": "Autonomous Execution Mode",
+      "description": "How /forge:auto runs implementation waves: 'sequential' (one task at a time — isolates failures) or 'parallel' (tasks within a wave run together — faster). Default: sequential."
+    },
+    "auto_max_fix_attempts": {
+      "type": "number",
+      "title": "Autonomous Fix Attempts",
+      "description": "How many times /forge:auto retries fixing a failing task or red test suite before halting and reporting. Default: 3."
     }
   }
 }

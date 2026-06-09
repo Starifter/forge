@@ -61,7 +61,9 @@ Edit `skills/using-forge/SKILL.md`. This is injected at every session start. Cha
 
 **Hard gates are non-negotiable.** Every user-facing decision goes through `AskUserQuestion`. Every phase has an explicit gate. Do not add phases that can be silently skipped.
 
-**Haiku for mechanical work.** `researcher`, `context-manager`, and `dependency-installer` run on Haiku because their work is mechanical (reading, extracting, compressing). Agents that reason or generate code run on Sonnet.
+**Only the orchestrator talks to the user.** Subagents run non-interactively — `AskUserQuestion` inside one errors. Any agent that needs a decision must draft its best attempt, surface assumptions in its return message, and let the orchestrator confirm. The interactive Spec dialogue runs inline in the orchestrator (`references/spec-dialogue.md`), not as an agent. Never add an agent that calls `AskUserQuestion`.
+
+**Haiku for mechanical work.** `researcher` and `dependency-installer` run on Haiku because their work is mechanical (reading, extracting, detecting). Agents that reason or generate code run on Sonnet.
 
 **Wave-level batch review, not per-task.** Don't revert the batching — it's a meaningful speed improvement. The only exception is `strict_wave_review: true` in settings.
 
@@ -87,7 +89,7 @@ Test the full workflow with a simple feature. Check:
 - Worktree setup runs in background without blocking Research
 - Wave classification logs correctly (Fully parallel / Mixed / Fully sequential)
 - Batch review fires per wave, not per task
-- `context-manager` runs once after all waves, not per wave
+- Raw agent outputs are dropped at Gate 4B; the progress log + `plan.md` checkboxes carry forward
 - `using-forge` context appears at session start
 - Settings take effect when configured
 
