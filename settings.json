@@ -8,7 +8,6 @@
         "worktree_default": "",
         "auto_clean": false,
         "verify_per_wave": false,
-        "auto_execution_mode": "sequential",
         "auto_max_fix_attempts": 3
       }
     }

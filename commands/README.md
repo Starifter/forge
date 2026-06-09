@@ -5,7 +5,7 @@ Slash commands let you jump directly into a specific Forge phase without waiting
 ---
 
 ## `/forge:auto`
-Runs the entire pipeline **unattended** — no questions — for the task you pass as the argument: `/forge:auto "add a health endpoint"`. Invokes the `autonomous-forge` skill: works in an isolated worktree, auto-derives the spec, auto-approves the plan, implements with 2-stage review, and verifies. Auto-retries a failing task or red tests up to `auto_max_fix_attempts` (default 3), then halts with a report. Stops after Verify with the work committed locally in the worktree — never pushes, PRs, or merges. Use this when you want to hand off a well-described task and review the result later.
+**Semi-autonomous** run for the task you pass as the argument: `/forge:auto "add a health endpoint"`. Invokes the `autonomous-forge` skill. You stay in the loop for **Spec and Plan** — it asks questions to shape the spec, then drafts a plan and gets your approval + execution mode. Once you approve, it **hands off to unattended execution**: implements (2-stage review) and verifies in an isolated worktree with no further questions. Auto-retries a failing task or red tests up to `auto_max_fix_attempts` (default 3), then halts with a report. Stops after Verify with the work committed locally in the worktree — never pushes, PRs, or merges. Use this to nail down the what/how, then walk away while it builds.
 
 ## `/forge:spec`
 Starts the Spec phase directly. The orchestrator asks clarifying questions in rounds (inline — Spec is interactive), writes a design document, and confirms with you before finishing. Use this when you want to nail down requirements before anything else.

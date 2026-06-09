@@ -52,7 +52,7 @@ Restart Claude Code to activate the SessionStart hook.
 
 | Command | Phase |
 |---|---|
-| `/forge:auto "<task>"` | **Unattended run** — full pipeline, no questions, stops after Verify |
+| `/forge:auto "<task>"` | **Semi-autonomous** — interactive Spec + Plan, then unattended Implement + Verify |
 | `/forge:spec` | Jump to Spec — clarify what to build |
 | `/forge:plan` | Jump to Plan — produce a waved task plan |
 | `/forge:implement` | Jump to Implement — execute an approved plan |
@@ -62,25 +62,26 @@ Restart Claude Code to activate the SessionStart hook.
 
 ---
 
-## Autonomous mode (`/forge:auto`)
+## Semi-autonomous mode (`/forge:auto`)
 
-`/forge:auto "<task>"` runs the **entire pipeline unattended** — no questions, suitable for leaving in the background. It makes every decision itself and records the ones it had to assume.
+`/forge:auto "<task>"` keeps you in the loop for the **judgment calls** and runs the **tedious part by itself**. You shape the Spec and approve the Plan; then Implement and Verify run unattended in an isolated worktree and report back — so you can walk away once the plan is set.
 
 ```
 /forge:auto "add a /health endpoint that returns build SHA and uptime as JSON"
 ```
 
 What it does, end to end:
-1. **Auto-Spec** — derives the spec from your task text (no dialogue); records every assumption in `spec.md`.
-2. **Worktree** — always isolates work in a new git worktree + branch (never your current tree). Installs deps, checks the baseline is green.
-3. **Research → Plan** — runs the researcher, drafts a waved plan, and auto-approves it.
-4. **Implement** — executes the waves with the same 2-stage review as interactive forge. On a failing task it auto-retries up to `auto_max_fix_attempts` (default 3).
-5. **Verify** — runs the suite; fixes and re-runs up to the same budget.
-6. **Stops** — commits the green work **locally in the worktree** and writes a report. It does **not** push, open a PR, or merge — shipping is your call.
+1. **Spec _(interactive)_** — runs the full Socratic dialogue, asks you questions, and confirms the design doc. Just like interactive forge.
+2. **Worktree** — always isolates work in a new git worktree + branch (never your current tree), so you can keep working while it runs. Installs deps, checks the baseline is green.
+3. **Research → Plan _(interactive)_** — runs the researcher, drafts a waved plan, then **you approve it** and pick sequential or parallel execution.
+4. **⛔ Handoff** — once you approve, it goes heads-down. **No more questions.**
+5. **Implement _(unattended)_** — executes the waves with the same 2-stage review as interactive forge. On a failing task it auto-retries up to `auto_max_fix_attempts` (default 3).
+6. **Verify _(unattended)_** — runs the suite; fixes and re-runs up to the same budget.
+7. **Stops** — commits the green work **locally in the worktree** and writes a report. It does **not** push, open a PR, or merge — shipping is your call.
 
-If anything can't be resolved (dirty tree, red baseline, a task that won't pass, tests still failing after retries), it **halts and writes `.forge/[feature]/auto-report.md`** saying exactly where and why — never a faked success. State lives in `.forge/[feature]/`, so you can take over interactively with `/forge` from where it stopped.
+If anything can't be resolved during unattended execution (a task that won't pass, tests still failing after retries), it **halts and writes `.forge/[feature]/auto-report.md`** saying exactly where and why — never a faked success. State lives in `.forge/[feature]/`, so you can take over interactively with `/forge` from where it stopped.
 
-The richer your task description, the fewer assumptions it has to make. Tune behaviour with `auto_execution_mode` and `auto_max_fix_attempts` (see Settings).
+Tune the unattended retry budget with `auto_max_fix_attempts` (see Settings).
 
 ---
 
@@ -116,8 +117,7 @@ Configure Forge behaviour when installing — or change anytime:
 | `worktree_default` | `""` | Pre-select `"worktree"` or `"inline"` to skip the question |
 | `auto_clean` | `false` | Delete `.forge/[feature]/` automatically after shipping |
 | `verify_per_wave` | `false` | Run full test suite after each wave, not just at the end |
-| `auto_execution_mode` | `"sequential"` | `/forge:auto` wave execution: `"sequential"` or `"parallel"` |
-| `auto_max_fix_attempts` | `3` | `/forge:auto` retries before halting on a failing task or red tests |
+| `auto_max_fix_attempts` | `3` | `/forge:auto` unattended-execution retries before halting on a failing task or red tests |
 
 ---
 
