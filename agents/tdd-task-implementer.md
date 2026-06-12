@@ -35,10 +35,10 @@ Find the task matching the task ID provided. Read the coding conventions too.
 Before touching the implementation file, write a test that:
 - Targets the exact behaviour described in the task
 - Fails meaningfully — not a trivially passing assertion
-- Uses the project's existing test framework (check `.forge/[feature-name]/research.md` for testing conventions)
+- Uses the project's existing test framework (check `.forge/[feature-name]/plan.md` conventions, or inspect existing test files for the project's testing conventions)
 
 ```bash
-cat .forge/[feature-name]/research.md | grep -A5 "Testing"
+cat .forge/[feature-name]/plan.md | grep -A5 -i "convention"
 ```
 
 Run the test and confirm it fails:

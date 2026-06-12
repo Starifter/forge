@@ -17,7 +17,7 @@ Forge takes a raw feature request from idea to verified, merged implementation �
 ## Pipeline
 
 ```
-[UI Check] → Spec → Workspace → Research → Plan → Implement → Verify → Complete
+[UI Check] → Spec → Workspace → Plan → Implement → Verify → Complete
 ```
 
 Every phase is handled by a dedicated agent. The orchestrator never writes code — it coordinates. Each agent gets a fresh context with only what it needs, reads from `.forge/[feature-name]/` on disk, and writes its output back there. No content is passed through the orchestrator's context.
@@ -73,7 +73,7 @@ Restart Claude Code to activate the SessionStart hook.
 What it does, end to end:
 1. **Spec _(interactive)_** — runs the full Socratic dialogue, asks you questions, and confirms the design doc. Just like interactive forge.
 2. **Worktree** — always isolates work in a new git worktree + branch (never your current tree), so you can keep working while it runs. Installs deps, checks the baseline is green.
-3. **Research → Plan _(interactive)_** — runs the researcher, drafts a waved plan, then **you approve it** and pick sequential or parallel execution.
+3. **Plan _(interactive)_** — drafts a waved plan, then **you approve it** and pick sequential or parallel execution.
 4. **⛔ Handoff** — once you approve, it goes heads-down. **No more questions.**
 5. **Implement _(unattended)_** — executes the waves with the same 2-stage review as interactive forge. On a failing task it auto-retries up to `auto_max_fix_attempts` (default 3).
 6. **Verify _(unattended)_** — runs the suite; fixes and re-runs up to the same budget.
@@ -91,8 +91,7 @@ All agents run **non-interactively** — they draft to disk and return. Every us
 
 | Agent | Model | Job |
 |---|---|---|
-| `researcher` | Haiku | Codebase scan + external research → research summary |
-| `plan-agent` | Sonnet | Spec + research → waved task plan (drafts; orchestrator approves) |
+| `plan-agent` | Sonnet | Spec + codebase scan → waved task plan (drafts; orchestrator approves) |
 | `frontend-developer` | Sonnet | UI/UX tasks → implementation or spec (drafts; orchestrator confirms) |
 | `task-implementer` | Sonnet | Executes one task in isolation |
 | `tdd-task-implementer` | Sonnet | Same, with enforced red→green TDD cycle |
@@ -112,7 +111,6 @@ Configure Forge behaviour when installing — or change anytime:
 | Setting | Default | Effect |
 |---|---|---|
 | `tdd_mode` | `false` | Use `tdd-task-implementer` — enforced red→green TDD per task |
-| `auto_research` | `true` | Research runs automatically; set `false` to confirm (and optionally skip) it first |
 | `strict_wave_review` | `false` | Review after every individual task instead of per wave |
 | `worktree_default` | `""` | Pre-select `"worktree"` or `"inline"` to skip the question |
 | `auto_clean` | `false` | Delete `.forge/[feature]/` automatically after shipping |
@@ -130,13 +128,10 @@ If the task involves anything a user sees or interacts with, `frontend-developer
 Spec runs **inline in the orchestrator** (the main loop), because it's an interactive Socratic dialogue and subagents can't ask you questions. One topic per round, 3–5 questions max per round, via `AskUserQuestion`. Stops when it can write a complete, unambiguous design document without guessing. Produces a structured doc with problem statement, scope, behaviour, edge cases, constraints, and testable acceptance criteria. Writes to `.forge/[feature]/spec.md`.
 
 ### Workspace Setup
-User chooses worktree or inline via `AskUserQuestion`. If worktree: `dependency-installer` detects the stack and runs the correct install command, then the baseline test suite runs — all in a background agent. Forge continues to Research and Planning without waiting. The worktree is only checked again right before implementation starts.
-
-### Research
-`researcher` (Haiku) scans relevant files, extracts existing patterns and conventions, identifies dependencies, and researches any external topic the feature needs. Writes to `.forge/[feature]/research.md`. Runs by default — skippable only when `auto_research` is off and the user opts out.
+User chooses worktree or inline via `AskUserQuestion`. If worktree: `dependency-installer` detects the stack and runs the correct install command, then the baseline test suite runs — all in a background agent. Forge continues to Planning without waiting. The worktree is only checked again right before implementation starts.
 
 ### Plan
-`plan-agent` reads `.forge/[feature]/spec.md` and `.forge/[feature]/research.md`, then produces a waved implementation plan. Every task targets one file, takes 2–5 minutes, and is unambiguous. Tasks are grouped into waves by file-conflict safety. It writes the plan to `.forge/[feature]/plan.md` and returns a summary non-interactively; the orchestrator presents it and you approve the plan and choose sequential or parallel execution.
+`plan-agent` reads `.forge/[feature]/spec.md` and scans the codebase directly, then produces a waved implementation plan. Every task targets one file, takes 2–5 minutes, and is unambiguous. Tasks are grouped into waves by file-conflict safety. It writes the plan to `.forge/[feature]/plan.md` and returns a summary non-interactively; the orchestrator presents it and you approve the plan and choose sequential or parallel execution.
 
 ### Implement
 The orchestrator dispatches agents per task. Each `task-implementer` receives only a task ID — it reads the task from `.forge/[feature]/plan.md` and the target file from disk directly. No content is passed through the orchestrator.
@@ -170,13 +165,12 @@ Each feature gets its own directory under `.forge/`:
 └── add-user-auth/
     ├── session.md          ← phase status, workspace mode, branch
     ├── spec.md             ← confirmed design document
-    ├── research.md         ← codebase scan + findings
     ├── ui-spec.md          ← UI output (if applicable)
     ├── plan.md             ← waved task plan with checkboxes
     └── complete.md         ← final summary
 ```
 
-Sessions survive context resets — if Claude Code crashes mid-plan, `.forge/` still has the spec, research, and the plan with completed tasks checked off. Restart and pick up from the last unchecked task.
+Sessions survive context resets — if Claude Code crashes mid-plan, `.forge/` still has the spec and the plan with completed tasks checked off. Restart and pick up from the last unchecked task.
 
 Add `.forge/` to your project's `.gitignore` unless you want to commit session state.
 
@@ -227,7 +221,6 @@ forge/
 │   ├── plugin.json          # Plugin manifest + userConfig settings
 │   └── marketplace.json     # Marketplace catalog entry
 ├── agents/
-│   ├── researcher.md        # Codebase scan → .forge/[feature]/research.md (Haiku)
 │   ├── plan-agent.md        # Waved plan → .forge/[feature]/plan.md
 │   ├── frontend-developer.md # UI/UX → .forge/[feature]/ui-spec.md
 │   ├── task-implementer.md  # Reads .forge/[feature]/plan.md, implements task
@@ -252,8 +245,7 @@ forge/
     │   └── references/
     │       ├── spec-dialogue.md          # Inline Spec procedure (run by orchestrator)
     │       ├── planning-guide.md
-    │       ├── subagent-instructions.md
-    │       └── research-summary-template.md
+    │       └── subagent-instructions.md
     ├── autonomous-forge/
     │   └── SKILL.md         # Unattended pipeline (/forge:auto)
     ├── using-forge/

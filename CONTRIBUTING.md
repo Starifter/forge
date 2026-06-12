@@ -63,7 +63,7 @@ Edit `skills/using-forge/SKILL.md`. This is injected at every session start. Cha
 
 **Only the orchestrator talks to the user.** Subagents run non-interactively — `AskUserQuestion` inside one errors. Any agent that needs a decision must draft its best attempt, surface assumptions in its return message, and let the orchestrator confirm. The interactive Spec dialogue runs inline in the orchestrator (`references/spec-dialogue.md`), not as an agent. Never add an agent that calls `AskUserQuestion`.
 
-**Haiku for mechanical work.** `researcher` and `dependency-installer` run on Haiku because their work is mechanical (reading, extracting, detecting). Agents that reason or generate code run on Sonnet.
+**Haiku for mechanical work.** `dependency-installer` runs on Haiku because its work is mechanical (detecting the stack, running an install command). Agents that reason or generate code run on Sonnet.
 
 **Wave-level batch review, not per-task.** Don't revert the batching — it's a meaningful speed improvement. The only exception is `strict_wave_review: true` in settings.
 
@@ -86,7 +86,7 @@ claude /install forge.skill
 Test the full workflow with a simple feature. Check:
 - `AskUserQuestion` fires at every gate (no plain-text questions)
 - `.forge/[feature-name]/` is created with the right structure
-- Worktree setup runs in background without blocking Research
+- Worktree setup runs in background without blocking Planning
 - Wave classification logs correctly (Fully parallel / Mixed / Fully sequential)
 - Batch review fires per wave, not per task
 - Raw agent outputs are dropped at Gate 4B; the progress log + `plan.md` checkboxes carry forward

@@ -35,14 +35,14 @@ Read `pluginConfigs["forge"].options` at the start:
 | `tdd_mode` | `false` | If `true`: use `tdd-task-implementer` instead of `task-implementer` |
 | `auto_max_fix_attempts` | `3` | During unattended execution, retry budget for fixing a failing task or red test suite before halting |
 
-Execution mode (sequential/parallel) is chosen by the user at plan approval — there is no separate setting. Research always runs. Artifacts are always kept (you review them after).
+Execution mode (sequential/parallel) is chosen by the user at plan approval — there is no separate setting. Artifacts are always kept (you review them after).
 
 ---
 
 ## Pipeline
 
 ```
-INTERACTIVE:  Init → [UI Check] → Spec → Worktree → Research → Plan (approve + mode)
+INTERACTIVE:  Init → [UI Check] → Spec → Worktree → Plan (approve + mode)
 ─────────────────────────── handoff ───────────────────────────
 UNATTENDED:   Implement → Verify → Stop + Report
 ```
@@ -66,7 +66,6 @@ semi-autonomous — interactive Spec + Plan, then unattended Implement + Verify
 ## Status
 - [ ] Spec
 - [ ] Worktree
-- [ ] Research
 - [ ] Plan
 - [ ] Implement
 - [ ] Verify
@@ -104,13 +103,9 @@ git worktree add "../worktree-[feature-name]" -b "[feature-name]"
 
 Invoke `dependency-installer` (pass the worktree path) and run the baseline suite. Baseline red → tell the user and stop (can't attribute later failures). Record branch + worktree path in `session.md`, tick `Worktree`.
 
-### Phase E — Research
+### Phase E — Plan (interactive)
 
-Invoke the `researcher` agent (reads `spec.md`, writes `research.md`). Tick `Research`.
-
-### Phase F — Plan (interactive)
-
-Invoke the `plan-agent` (non-interactive — drafts `plan.md`, returns a summary). Then **you run approval interactively**, exactly like interactive forge Phase 4:
+Invoke the `plan-agent` (non-interactive — drafts `plan.md`, returns a summary). Then **you run approval interactively**, exactly like interactive forge Phase 3:
 
 1. Present the plan summary and ask approval via AskUserQuestion. If changes: re-invoke `plan-agent` with feedback, re-ask. Don't proceed until approved.
 2. Ask execution mode (Sequential / Parallel) via AskUserQuestion. Record it at the top of `plan.md` and in `session.md`.
@@ -119,7 +114,7 @@ Tick `Plan`.
 
 ### ⛔ HANDOFF — last interaction
 
-Once the plan is approved and the mode chosen, tell the user clearly:
+Once the plan is approved and the mode chosen, tell the user clearly (this follows immediately after Plan):
 
 ```
 Plan approved. Going heads-down now — I'll implement and verify unattended in the
@@ -128,9 +123,9 @@ worktree and report back when it's green (or halt with a report if something blo
 
 **From here on, ask nothing.**
 
-### Phase G — Implement (unattended)
+### Phase F — Implement (unattended)
 
-Execute the waves like interactive forge's Phase 6 — **PATH A** if sequential, **PATH B** (file-conflict classification) if parallel — using `task-implementer` (or `tdd-task-implementer` if `tdd_mode`) + the 2-stage `code-reviewer` batch per wave. **No Gate 4B "ready to run tests?" question** — proceed straight to Verify.
+Execute the waves like interactive forge's Phase 5 — **PATH A** if sequential, **PATH B** (file-conflict classification) if parallel — using `task-implementer` (or `tdd-task-implementer` if `tdd_mode`) + the 2-stage `code-reviewer` batch per wave. **No Gate 4B "ready to run tests?" question** — proceed straight to Verify.
 
 Failure policy (auto-retry, then stop):
 - `NEEDS REVISION` → re-invoke the implementer with the feedback; cap at `auto_max_fix_attempts` cycles per task.
@@ -138,13 +133,13 @@ Failure policy (auto-retry, then stop):
 
 Maintain the one-line-per-task progress log; drop raw agent outputs at the end. Tick `Implement`.
 
-### Phase H — Verify (unattended)
+### Phase G — Verify (unattended)
 
 Run the full test suite in the worktree.
 - **Green** → tick `Verify`, go to Stop + Report.
 - **Red** → diagnose, fix, re-run, up to `auto_max_fix_attempts`. Still red → **HALT** and report with the failing output.
 
-### Phase I — Stop + Report (terminal)
+### Phase H — Stop + Report (terminal)
 
 Commit the work **locally in the worktree** — no push, no PR, no merge:
 
@@ -223,4 +218,4 @@ Then deliver a short, honest message: where it stopped and why. Never dress a ha
 - `../forge/references/planning-guide.md` — wave grouping + task sizing
 - `../forge/references/subagent-instructions.md` — subagent prompt construction + review checklist
 
-Uses forge's agents (`researcher`, `plan-agent`, `frontend-developer`, `task-implementer`, `tdd-task-implementer`, `code-reviewer`, `dependency-installer`) — all non-interactive; the orchestrator owns every question through plan approval.
+Uses forge's agents (`plan-agent`, `frontend-developer`, `task-implementer`, `tdd-task-implementer`, `code-reviewer`, `dependency-installer`) — all non-interactive; the orchestrator owns every question through plan approval.

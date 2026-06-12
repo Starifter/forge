@@ -11,7 +11,7 @@
         "source": "github",
         "repo": "starifter/forge"
       },
-      "description": "A structured, agent-driven development workflow for Claude Code. Spec \u2192 Research \u2192 Plan \u2192 Implement \u2192 Verify with parallel execution, phase gates, and dedicated agents for every step.",
+      "description": "A structured, agent-driven development workflow for Claude Code. Spec \u2192 Plan \u2192 Implement \u2192 Verify with parallel execution, phase gates, and dedicated agents for every step.",
       "version": "1.0.0",
       "author": {
         "name": "starifter"

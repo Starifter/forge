@@ -2,7 +2,7 @@
 name: forge
 description: >
   Use this skill for any feature request, bug fix, refactor, or implementation task.
-  Enforces a structured UI Check → Spec → Workspace → Research → Plan → Subagent Flow → Implement → Verify → Complete pipeline.
+  Enforces a structured UI Check → Spec → Workspace → Plan → Subagent Flow → Implement → Verify → Complete pipeline.
   Trigger whenever a user says "build", "add", "implement", "create a feature", "fix this", "refactor",
   or describes any coding task — even if it sounds simple. For tiny tasks, Plan can be condensed,
   but Spec and Verify are always required.
@@ -17,13 +17,12 @@ A structured, phase-gated development workflow from idea to verified, merged imp
 ## CRITICAL RULES — READ FIRST
 
 1. **Never proceed to the next phase without completing the current one.** Every phase ends with a HARD GATE.
-2. **Never write implementation code** during UI Check, Spec, Workspace, Research, or Plan phases.
+2. **Never write implementation code** during UI Check, Spec, Workspace, or Plan phases.
 3. **Always run `frontend-developer` agent before spec** if the task involves any UI or UX work.
-4. **Research always runs** — never skipped.
-5. **Always ask Sequential or Parallel** before implementing. Never assume.
-6. **Always use the AskUserQuestion tool** for every question asked to the user — workspace choice, spec dialogue, plan approval, execution mode, UI confirmation, finish options, everything. Never ask questions as plain text.
-7. **After all waves complete** (at Gate 4B), discard all raw task-implementer and code-reviewer output. Keep only the one-line-per-task progress log in context — it carries forward into Verify and Complete. Per-task completion is also persisted on disk by the `[x]` checkboxes in `plan.md`.
-8. **Subagents are non-interactive — they never ask the user anything.** All user interaction happens in the orchestrator (the main loop): Spec runs inline; `plan-agent` and `frontend-developer` only draft to disk and return, and the orchestrator confirms their output. A subagent that calls AskUserQuestion will error.
+4. **Always ask Sequential or Parallel** before implementing. Never assume.
+5. **Always use the AskUserQuestion tool** for every question asked to the user — workspace choice, spec dialogue, plan approval, execution mode, UI confirmation, finish options, everything. Never ask questions as plain text.
+6. **After all waves complete** (at Gate 4B), discard all raw task-implementer and code-reviewer output. Keep only the one-line-per-task progress log in context — it carries forward into Verify and Complete. Per-task completion is also persisted on disk by the `[x]` checkboxes in `plan.md`.
+7. **Subagents are non-interactive — they never ask the user anything.** All user interaction happens in the orchestrator (the main loop): Spec runs inline; `plan-agent` and `frontend-developer` only draft to disk and return, and the orchestrator confirms their output. A subagent that calls AskUserQuestion will error.
 
 ---
 
@@ -34,7 +33,6 @@ Forge behaviour is controlled by `pluginConfigs["forge"].options` in the user's 
 | Setting | Default | Effect |
 |---|---|---|
 | `tdd_mode` | `false` | If `true`: use `tdd-task-implementer` instead of `task-implementer` for all implementation tasks |
-| `auto_research` | `true` | If `true`: run the Research phase automatically. If `false`: ask the user before running Research (it may then be skipped for this task) |
 | `strict_wave_review` | `false` | If `true`: run `code-reviewer` after every individual task, not batched per wave |
 | `worktree_default` | `""` | If `"worktree"` or `"inline"`: skip the workspace choice question and use this mode |
 | `auto_clean` | `false` | If `true`: automatically delete `.forge/` after the Complete phase ships the feature |
@@ -47,14 +45,12 @@ Forge behaviour is controlled by `pluginConfigs["forge"].options` in the user's 
 
 **Strict wave review:** If `strict_wave_review` is `true`, skip the wave-level batch review pattern and instead invoke `code-reviewer` immediately after each individual `task-implementer` result — in both PATH A and PATH B.
 
-**Auto research:** If `auto_research` is `true` (default), run Research automatically at Phase 3. If `false`, ask the user (AskUserQuestion) at the start of Phase 3 whether to run Research first — they may choose to skip it for this task.
-
 ---
 
 ## Phase Overview
 
 ```
-[UI Check] → Spec → Workspace → Research → Plan → Sequential or Parallel? → Implement → Verify → Complete
+[UI Check] → Spec → Workspace → Plan → Sequential or Parallel? → Implement → Verify → Complete
 ```
 
 | Phase | Required | Notes |
@@ -62,7 +58,6 @@ Forge behaviour is controlled by `pluginConfigs["forge"].options` in the user's 
 | UI Check | If UI/UX task | `frontend-developer` agent fires before spec |
 | Spec | Always | Socratic dialogue → confirmed design doc |
 | Workspace | Always | User chooses worktree or inline |
-| Research | Always | Codebase + external topic scan before planning |
 | Plan | Always | Tasks + waves; condense for tiny tasks |
 | Subagent Flow | Always | User picks sequential or parallel |
 | Implement | Always | Fresh subagent per task + 2-stage review |
@@ -131,7 +126,6 @@ cat > ".forge/${FEATURE_NAME}/session.md" << 'EOF'
 - [ ] UI Check
 - [ ] Spec
 - [ ] Workspace
-- [ ] Research
 - [ ] Plan
 - [ ] Implement
 - [ ] Verify
@@ -147,7 +141,6 @@ EOF
 
 All subsequent `.forge/` file references in this session use `.forge/[feature-name]/` as the base path:
 - `.forge/[feature-name]/spec.md`
-- `.forge/[feature-name]/research.md`
 - `.forge/[feature-name]/plan.md`
 - `.forge/[feature-name]/ui-spec.md`
 - `.forge/[feature-name]/complete.md`
@@ -242,12 +235,12 @@ If baseline tests fail, report the failures clearly.
 
 **Do not wait for this agent to complete.** Record internally: **mode = worktree**, **worktree agent = running**.
 
-Immediately proceed to Phase 3: Research in parallel.
+Immediately proceed to Phase 3: Plan in parallel.
 
 Report to user:
 ```
 Worktree setup running in background on a new branch.
-Starting research now — I'll check worktree status before implementation begins.
+Starting planning now — I'll check worktree status before implementation begins.
 ```
 
 ---
@@ -264,7 +257,7 @@ If dirty: note the uncommitted changes and inform the user. Do not block — it 
 
 Report:
 ```
-✅ Working inline in current codebase. Starting research now.
+✅ Working inline in current codebase. Starting planning now.
 ```
 
 Record internally: **mode = inline**
@@ -275,8 +268,8 @@ Record internally: **mode = inline**
 
 **Do not wait for worktree setup to complete before continuing.**
 
-- Worktree mode: kick off background setup, immediately proceed to Research
-- Inline mode: immediately proceed to Research
+- Worktree mode: kick off background setup, immediately proceed to Plan
+- Inline mode: immediately proceed to Plan
 
 The worktree will be checked at Gate 4 (before implementation begins).
 
@@ -284,41 +277,7 @@ Tick `Workspace` in `.forge/[feature-name]/session.md`.
 
 ---
 
-## Phase 3: Research
-
-**Goal:** Build the context needed for accurate planning before a single line of code is written.
-
-**Check `auto_research` first:**
-- If `auto_research` is `true` (default): run Research now — do not ask.
-- If `auto_research` is `false`: use AskUserQuestion before running the researcher:
-  ```
-  AskUserQuestion:
-    question: "Run the Research phase before planning?"
-    options: ["Yes, research first (Recommended)", "Skip research for this task", "Other"]
-  ```
-  If the user skips: note `Research skipped (auto_research off)` in `session.md` and proceed to Phase 4. Otherwise run the researcher as below.
-
-Do not research inline — only the `researcher` agent runs this phase.
-
-Use the **Agent tool** to invoke the `researcher` agent with this prompt:
-
-```
-Feature folder: .forge/[feature-name]/
-
-Read .forge/[feature-name]/spec.md for context, then research the codebase and any
-external topics needed to plan this feature accurately.
-Write the Research Summary to .forge/[feature-name]/research.md.
-```
-
-The researcher reads `.forge/[feature-name]/spec.md` itself — do not paste the spec.
-
-Wait for researcher to return `Research complete — written to .forge/[feature-name]/research.md`, then tick `Research` in `session.md`.
-
-Then proceed directly to Phase 4 — no additional gate after Research.
-
----
-
-## Phase 4: Plan
+## Phase 3: Plan
 
 **Goal:** Produce a concrete, executable plan — atomic tasks grouped into parallel-safe waves.
 
@@ -327,14 +286,14 @@ Use the **Agent tool** to invoke the `plan-agent` with this prompt:
 ```
 Feature folder: .forge/[feature-name]/
 
-Read .forge/[feature-name]/spec.md and .forge/[feature-name]/research.md, produce a
+Read .forge/[feature-name]/spec.md, produce a
 waved implementation plan, and write it to .forge/[feature-name]/plan.md. Do NOT ask
 the user anything — you run non-interactively. Return a short plan summary; the
 orchestrator handles approval and execution mode.
 Workspace: [worktree at ../worktree-<branch-name> / inline]
 ```
 
-The plan-agent reads all context from `.forge/[feature-name]/` itself — do not paste spec or research. It writes the plan and returns a summary without asking anything.
+The plan-agent reads all context from `.forge/[feature-name]/` itself — do not paste the spec. It writes the plan and returns a summary without asking anything.
 
 **You (the orchestrator) then run approval and execution mode** via AskUserQuestion:
 
@@ -365,15 +324,15 @@ Record the chosen mode at the top of `.forge/[feature-name]/plan.md` (`## Execut
 
 ---
 
-## Phase 5: Subagent Flow (captured in Gate 3)
+## Phase 4: Subagent Flow (captured in Gate 3)
 
 The user's sequential/parallel choice is collected by the plan-agent at Gate 3. No additional step needed — proceed directly to Implement.
 
 ---
 
-## Phase 6: Implement
+## Phase 5: Implement
 
-**Goal:** Execute the approved plan. Path depends on execution mode chosen in Phase 4.
+**Goal:** Execute the approved plan. Path depends on execution mode chosen in Phase 3.
 
 ---
 
@@ -598,7 +557,7 @@ Include the progress log in your message before calling AskUserQuestion.
 
 ---
 
-## Phase 7: Verify
+## Phase 6: Verify
 
 **Goal:** Confirm the full implementation works.
 
@@ -644,7 +603,7 @@ AskUserQuestion:
 
 ---
 
-## Phase 8: Complete
+## Phase 7: Complete
 
 **Worktree — Option 1: GitHub PR**
 ```bash
@@ -732,4 +691,3 @@ And append to the summary: `Session files removed (auto_clean enabled).`
 - `references/spec-dialogue.md` — the inline Spec dialogue procedure (run by the orchestrator)
 - `references/planning-guide.md` — wave grouping rules and task sizing
 - `references/subagent-instructions.md` — subagent prompt construction and review checklist
-- `references/research-summary-template.md` — Research phase output template

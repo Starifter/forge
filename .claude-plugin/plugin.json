@@ -2,7 +2,7 @@
   "name": "forge",
   "displayName": "Forge",
   "version": "1.4.5",
-  "description": "Forge \u2014 a structured, phase-gated development workflow with spec, research, planning, parallel execution, code review, and session enforcement.",
+  "description": "Forge \u2014 a structured, phase-gated development workflow with spec, planning, parallel execution, code review, and session enforcement.",
   "author": {
     "name": "forge"
   },
@@ -11,11 +11,6 @@
       "type": "boolean",
       "title": "TDD Mode",
       "description": "Enforce red-green TDD on every implementation task. task-implementer writes a failing test first, implements only enough to pass it, then moves on. Default: off."
-    },
-    "auto_research": {
-      "type": "boolean",
-      "title": "Auto Research",
-      "description": "Always run the research phase automatically without asking. Default: on."
     },
     "strict_wave_review": {
       "type": "boolean",

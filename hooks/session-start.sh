@@ -15,7 +15,7 @@ SKILL_CONTENT=$(awk '/^---/{found++; next} found>=2{print}' "$SKILL_PATH")
 if [ -f "$SETTINGS_PATH" ]; then
   SETTINGS_CONTENT=$(cat "$SETTINGS_PATH")
 else
-  SETTINGS_CONTENT='{"pluginConfigs":{"forge":{"options":{"tdd_mode":false,"auto_research":true,"strict_wave_review":false,"worktree_default":"","auto_clean":false,"verify_per_wave":false,"auto_max_fix_attempts":3}}}}'
+  SETTINGS_CONTENT='{"pluginConfigs":{"forge":{"options":{"tdd_mode":false,"strict_wave_review":false,"worktree_default":"","auto_clean":false,"verify_per_wave":false,"auto_max_fix_attempts":3}}}}'
 fi
 
 # Combine into context

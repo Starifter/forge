@@ -21,7 +21,7 @@ If yes — invoke `forge`. Do this before clarifying questions, before research,
 | Gate | After phase | What you MUST do before proceeding |
 |---|---|---|
 | Gate 1 | Spec | Spec dialogue runs inline (in the main loop); do not proceed until the user confirms the spec |
-| Gate 2 | Workspace | Ask worktree or inline — if worktree, kick off background setup then immediately begin Research |
+| Gate 2 | Workspace | Ask worktree or inline — if worktree, kick off background setup then immediately begin Plan |
 | Gate 3 | Plan | `plan-agent` returns approved plan + execution mode — do not proceed until it does |
 | Gate 4 | Before Implement | If worktree mode: check background setup completed + baseline green before dispatching tasks |
 | Gate 4B | After Implement | All tasks ✅ or flagged — send completion report + "Shall I run tests?" |
@@ -39,7 +39,6 @@ If yes — invoke `forge`. Do this before clarifying questions, before research,
 |---|---|
 | "It's just one line" | Gate 1 → Gate 2 → worktree → Gate 3 still required |
 | "User seems in a hurry" | Gates take seconds. Skipping them causes bugs on main |
-| "Research is obviously not needed" | Research runs by default. Only skippable when `auto_research` is off and the user explicitly opts out. |
 | "I know they want parallel" | Use AskUserQuestion (Gate 3). Never assume |
 | "Tests will obviously pass" | Use AskUserQuestion (Gate 4). Never auto-run |
 | "They probably want a PR" | Use AskUserQuestion (Gate 5). Never auto-merge |

@@ -8,11 +8,8 @@ Each agent is a specialised worker with a focused job and a bounded context. The
 
 ## Roster
 
-### `researcher` — Haiku
-Runs the Research phase. Reads relevant files, extracts existing patterns and conventions, identifies dependencies and integrations, and researches any external topic the feature needs. Returns a structured Research Summary. Runs on Haiku because the work is mechanical (reading + extracting), not reasoning.
-
 ### `plan-agent` — Sonnet
-Drafts the Plan. Reads the confirmed spec and research summary, then produces a waved implementation plan. Every task targets one file, takes 2–5 minutes, and is unambiguous. Tasks are grouped into waves by file-conflict safety. Writes the plan to disk and returns a summary non-interactively — the orchestrator presents it and collects approval + execution mode (sequential/parallel) from the user.
+Drafts the Plan. Reads the confirmed spec and scans the codebase directly, then produces a waved implementation plan. Every task targets one file, takes 2–5 minutes, and is unambiguous. Tasks are grouped into waves by file-conflict safety. Writes the plan to disk and returns a summary non-interactively — the orchestrator presents it and collects approval + execution mode (sequential/parallel) from the user.
 
 ### `frontend-developer` — Sonnet
 Handles UI/UX tasks. Fires before spec when the request involves anything a user sees or interacts with. Reads the project's design system (or identifies that one needs to be built), commits to a bold aesthetic direction, and produces either a full implementation or a precise UI spec depending on scope. All states must be designed (default, hover, focus, loading, error, empty, disabled). Runs non-interactively — resolves visual ambiguity itself and returns; the orchestrator confirms the direction. Never produces generic output.
@@ -33,6 +30,6 @@ Reviews a completed task in two stages. Stage 1: spec compliance — did the out
 
 **Interaction lives in the orchestrator.** Subagents run non-interactively and cannot reach the user — calling `AskUserQuestion` inside one errors. So every question (spec dialogue, plan approval, execution mode, UI confirmation, finish options) is asked by the orchestrator. Agents that need a decision draft their best attempt, surface assumptions in their return message, and let the orchestrator confirm.
 
-**Model choice reflects the work.** Haiku for mechanical extraction (researcher). Sonnet for reasoning and generation (everything else). Don't add Opus-level work to the inner loop — it will slow every task.
+**Model choice reflects the work.** Sonnet for reasoning and generation across every agent. Don't add Opus-level work to the inner loop — it will slow every task.
 
 **Failure modes are explicit.** `task-implementer` returns a structured blocker report rather than partially implementing and guessing. `code-reviewer` returns NEEDS REVISION with specifics rather than vague feedback. This makes revision loops fast and targeted.

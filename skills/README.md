@@ -9,7 +9,7 @@ Skills are the orchestration layer. They define when Forge fires, how phases are
 `forge/SKILL.md` is the heart of the plugin. It defines the full workflow:
 
 ```
-[UI Check] → Spec → Workspace → Research → Plan → Implement → Verify → Complete
+[UI Check] → Spec → Workspace → Plan → Implement → Verify → Complete
 ```
 
 Each phase invokes one or more agents via the Agent tool. Hard gates (⛔) mark where Claude must stop and get explicit user confirmation before continuing. All user interaction uses `AskUserQuestion`.
@@ -17,7 +17,6 @@ Each phase invokes one or more agents via the Agent tool. Hard gates (⛔) mark 
 **References** are supporting files loaded on demand:
 - `planning-guide.md` — wave grouping rules, task sizing, common mistakes
 - `subagent-instructions.md` — how to construct task-implementer prompts and run wave-level batch review
-- `research-summary-template.md` — the structured template researcher fills out
 
 ### When it triggers
 Any task description containing implementation intent: "build", "add", "implement", "create", "fix", "refactor", or similar. The `using-forge` skill's 1% rule also ensures it fires when there's any doubt.

@@ -16,7 +16,7 @@ Include exactly these things — no more:
 
 1. **The task** — copied verbatim from the plan
 2. **Relevant existing code** — only the file being edited, or the interface it must conform to. Not unrelated files, not the full plan.
-3. **Coding conventions** — 1–2 bullets from Research if applicable
+3. **Coding conventions** — 1–2 bullets from the plan's conventions if applicable
 4. **Output report** — "Report what you changed, any deviations, and any assumptions"
 
 **Keep prompts under ~3,000 tokens.** If the relevant file is large, paste only function signatures and types, not implementations.
@@ -55,7 +55,7 @@ Report what you changed and any assumptions made.
 
 **Stage 2 — Code quality:**
 - [ ] No obvious bugs (unhandled edge cases, missing null checks)
-- [ ] Follows patterns from Research (naming, structure, error handling)
+- [ ] Follows the plan's conventions (naming, structure, error handling)
 - [ ] No dead code, commented-out blocks, or unused imports
 - [ ] Simplest solution that works
 

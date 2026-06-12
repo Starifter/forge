@@ -11,7 +11,7 @@ Slash commands let you jump directly into a specific Forge phase without waiting
 Starts the Spec phase directly. The orchestrator asks clarifying questions in rounds (inline — Spec is interactive), writes a design document, and confirms with you before finishing. Use this when you want to nail down requirements before anything else.
 
 ## `/forge:plan`
-Starts the Plan phase directly. Assumes Spec is already confirmed. `plan-agent` reads the research summary (run research first if needed) and drafts a waved task plan to disk; the orchestrator then collects plan approval and execution mode.
+Starts the Plan phase directly. Assumes Spec is already confirmed. `plan-agent` reads the confirmed spec, scans the codebase directly, and drafts a waved task plan to disk; the orchestrator then collects plan approval and execution mode.
 
 ## `/forge:implement`
 Starts the Implement phase directly. Assumes an approved plan exists. Asks for sequential or parallel execution via `AskUserQuestion`, then dispatches `task-implementer` and `code-reviewer` agents per wave.
